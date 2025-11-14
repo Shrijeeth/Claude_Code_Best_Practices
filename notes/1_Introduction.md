@@ -164,7 +164,7 @@ graph TD
     A --> C[Directory Listing]
     A --> D[File Reading]
     A --> E[Regex Operations]
-    A --> F[code.md Notes]
+    A --> F[claude.md Notes]
 
     F --> G[Autonomous Analysis]
     G --> H[Decision Making]
@@ -185,7 +185,7 @@ Claude Code relies on just a **small number of fundamental tools**:
 | **Directory Listing** | Navigate codebase structure |
 | **File Reading** | Access and understand code |
 | **Regex Operations** | Advanced text pattern matching |
-| **code.md** | Internal note-taking for context |
+| **claude.md** | Internal note-taking for context |
 
 ### What Claude Code Does NOT Use
 
@@ -195,9 +195,9 @@ Claude Code relies on just a **small number of fundamental tools**:
 
 ❌ **Transform code into searchable structures**
 
-### The code.md Approach
+### The claude.md Approach
 
-**Key innovation:** Claude Code uses a file called `code.md` to:
+**Key innovation:** Claude Code uses a file called `claude.md` to:
 
 1. **Take notes** while reading through code
 2. **Build understanding** of the codebase autonomously
@@ -257,7 +257,7 @@ Benefits include:
 | **Agency** | Claude Code's ability to work autonomously |
 | **MCP Servers** | Model Context Protocol servers for extending capabilities |
 | **Git Worktrees** | Parallel development branch management |
-| **code.md** | Internal note file for context building |
+| **claude.md** | Internal note file for context building |
 | **Planning Mode** | Strategic task breakdown feature |
 | **Thinking Mode** | Deep reasoning for complex problems |
 
