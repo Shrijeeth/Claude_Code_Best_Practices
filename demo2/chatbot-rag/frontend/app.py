@@ -107,6 +107,85 @@ def list_documents():
         return f"❌ Error: {str(e)}"
 
 
+def list_sessions():
+    """List all saved sessions"""
+    try:
+        response = requests.get(f"{API_URL}/sessions")
+        if response.status_code == 200:
+            sessions = response.json().get("sessions", [])
+            if not sessions:
+                return "No saved sessions yet.", gr.update(choices=[])
+
+            session_list = "💬 **Saved Sessions:**\n\n"
+            choices = []
+            for i, session in enumerate(sessions, 1):
+                preview = session.get('preview', 'No messages')
+                msg_count = session.get('message_count', 0)
+                session_list += f"{i}. [{msg_count} msgs] {preview}\n"
+                # Create dropdown choices with session_id as value
+                choices.append((preview[:50] + "..." if len(preview) > 50 else preview, session.get('session_id')))
+
+            return session_list, gr.update(choices=choices)
+        else:
+            return f"❌ Error: {response.json().get('detail', 'Request failed')}", gr.update(choices=[])
+    except Exception as e:
+        return f"❌ Error: {str(e)}", gr.update(choices=[])
+
+
+def load_session(selected_session_id):
+    """Load a previous session"""
+    global session_id
+
+    if not selected_session_id:
+        return "Please select a session to load.", []
+
+    try:
+        response = requests.get(f"{API_URL}/sessions/{selected_session_id}")
+        if response.status_code == 200:
+            session_data = response.json()
+            messages = session_data.get('messages', [])
+
+            # Update global session_id
+            session_id = selected_session_id
+
+            # Convert messages to Gradio chat history format
+            history = []
+            for i in range(0, len(messages), 2):
+                if i + 1 < len(messages):
+                    user_msg = messages[i].get('content', '')
+                    bot_msg = messages[i + 1].get('content', '')
+                    history.append((user_msg, bot_msg))
+
+            return f"✅ Loaded session with {len(messages)} messages", history
+        else:
+            return f"❌ Error: {response.json().get('detail', 'Session not found')}", []
+    except Exception as e:
+        return f"❌ Error: {str(e)}", []
+
+
+def delete_session(selected_session_id):
+    """Delete a session"""
+    if not selected_session_id:
+        return "Please select a session to delete.", gr.update(choices=[])
+
+    try:
+        response = requests.delete(f"{API_URL}/sessions/{selected_session_id}")
+        if response.status_code == 200:
+            # Refresh session list
+            return list_sessions()
+        else:
+            return f"❌ Error: {response.json().get('detail', 'Delete failed')}", gr.update(choices=[])
+    except Exception as e:
+        return f"❌ Error: {str(e)}", gr.update(choices=[])
+
+
+def new_session():
+    """Start a new session"""
+    global session_id
+    session_id = None
+    return "✅ Started new session", []
+
+
 # Custom CSS and JavaScript
 custom_head = """
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -187,6 +266,27 @@ with gr.Blocks(
                 lines=5
             )
 
+            gr.Markdown("---")
+
+            # Session Management
+            gr.Markdown("### 💾 Session Management")
+            new_session_btn = gr.Button("New Session ➕", variant="primary")
+            list_sessions_btn = gr.Button("List Sessions 📋")
+            session_dropdown = gr.Dropdown(
+                label="Select Session",
+                choices=[],
+                interactive=True
+            )
+            with gr.Row():
+                load_session_btn = gr.Button("Load 📂", scale=1)
+                delete_session_btn = gr.Button("Delete 🗑️", scale=1, variant="stop")
+            session_status = gr.Textbox(
+                label="Session Status",
+                interactive=False,
+                show_label=False,
+                lines=5
+            )
+
     # Event handlers
     send_btn.click(
         chat,
@@ -219,6 +319,29 @@ with gr.Blocks(
     clear_docs_btn.click(
         clear_documents,
         outputs=[docs_status]
+    )
+
+    # Session management event handlers
+    new_session_btn.click(
+        new_session,
+        outputs=[session_status, chatbot]
+    )
+
+    list_sessions_btn.click(
+        list_sessions,
+        outputs=[session_status, session_dropdown]
+    )
+
+    load_session_btn.click(
+        load_session,
+        inputs=[session_dropdown],
+        outputs=[session_status, chatbot]
+    )
+
+    delete_session_btn.click(
+        delete_session,
+        inputs=[session_dropdown],
+        outputs=[session_status, session_dropdown]
     )
 
     # Footer

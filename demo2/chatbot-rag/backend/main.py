@@ -134,6 +134,54 @@ async def list_documents():
         raise HTTPException(status_code=500, detail=f"Error listing documents: {str(e)}")
 
 
+@app.get("/sessions")
+async def list_sessions():
+    """List all chat sessions"""
+    try:
+        sessions = rag_engine.session_manager.list_sessions()
+        return {"sessions": sessions, "total": len(sessions)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error listing sessions: {str(e)}")
+
+
+@app.get("/sessions/{session_id}")
+async def get_session(session_id: str):
+    """Get details of a specific session"""
+    try:
+        session_data = rag_engine.session_manager.export_session(session_id)
+        if session_data is None:
+            raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+        return session_data
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving session: {str(e)}")
+
+
+@app.delete("/sessions/{session_id}")
+async def delete_session(session_id: str):
+    """Delete a specific session"""
+    try:
+        deleted = rag_engine.session_manager.delete_session(session_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+        return {"status": "success", "message": f"Session {session_id} deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting session: {str(e)}")
+
+
+@app.delete("/sessions")
+async def clear_all_sessions():
+    """Clear all chat sessions"""
+    try:
+        rag_engine.session_manager.clear_all_sessions()
+        return {"status": "success", "message": "All sessions cleared"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error clearing sessions: {str(e)}")
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

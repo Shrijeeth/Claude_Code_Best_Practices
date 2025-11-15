@@ -6,6 +6,7 @@ from sentence_transformers import SentenceTransformer
 import uuid
 from datetime import datetime
 import os
+from session_manager import SessionManager
 
 class RAGEngine:
     """RAG engine for document retrieval and response generation"""
@@ -29,8 +30,8 @@ class RAGEngine:
         # Initialize Gemini
         self.model = genai.GenerativeModel(os.getenv("GEMINI_MODEL"))
 
-        # Session history
-        self.session_history = {}
+        # Session manager for persistence
+        self.session_manager = SessionManager()
 
     def add_documents(self, chunks: List[str], source_name: str) -> str:
         """Add document chunks to vector store"""
@@ -85,8 +86,8 @@ class RAGEngine:
         # Retrieve relevant chunks
         relevant_chunks, sources = self.retrieve_relevant_chunks(query, n_results)
 
-        # Get session history
-        history = self.session_history.get(session_id, [])
+        # Get session history from SessionManager
+        history = self.session_manager.load_session(session_id)
 
         # Build context
         context = "\n\n".join(relevant_chunks) if relevant_chunks else ""
@@ -120,7 +121,10 @@ Please provide a helpful response:"""
         # Update session history
         history.append({"role": "user", "content": query})
         history.append({"role": "assistant", "content": response.text})
-        self.session_history[session_id] = history[-10:]  # Keep last 10 messages
+
+        # Keep last 10 messages and save to disk
+        history = history[-10:]
+        self.session_manager.save_session(session_id, history)
 
         # Get unique sources
         unique_sources = list(set(sources)) if sources else []
@@ -141,13 +145,13 @@ Please provide a helpful response:"""
         return "\n".join(formatted)
 
     def clear_all(self):
-        """Clear all documents from collection"""
+        """Clear all documents from collection and all sessions"""
         self.client.delete_collection(self.collection.name)
         self.collection = self.client.get_or_create_collection(
             name=self.collection.name,
             metadata={"hnsw:space": "cosine"}
         )
-        self.session_history = {}
+        self.session_manager.clear_all_sessions()
 
     def list_documents(self) -> List[dict]:
         """List all documents in the collection"""
