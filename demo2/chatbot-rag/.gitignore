@@ -36,6 +36,7 @@ ENV/
 *.swp
 *.swo
 *~
+.playwright-mcp/
 
 # Data
 uploads/*
