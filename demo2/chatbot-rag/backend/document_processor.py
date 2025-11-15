@@ -1,10 +1,10 @@
+import re
 from pathlib import Path
-from typing import List
-import pypdf
+
 import docx
 import openpyxl
+import pypdf
 from pptx import Presentation
-import re
 
 
 class DocumentProcessor:
@@ -14,21 +14,21 @@ class DocumentProcessor:
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
 
-    def process_document(self, file_path: str) -> List[str]:
+    def process_document(self, file_path: str) -> list[str]:
         """Process document and return text chunks"""
         file_path = Path(file_path)
         extension = file_path.suffix.lower()
 
         # Extract text based on file type
-        if extension == '.pdf':
+        if extension == ".pdf":
             text = self._extract_from_pdf(file_path)
-        elif extension in ['.docx', '.doc']:
+        elif extension in [".docx", ".doc"]:
             text = self._extract_from_docx(file_path)
-        elif extension in ['.xlsx', '.xls']:
+        elif extension in [".xlsx", ".xls"]:
             text = self._extract_from_excel(file_path)
-        elif extension in ['.pptx', '.ppt']:
+        elif extension in [".pptx", ".ppt"]:
             text = self._extract_from_pptx(file_path)
-        elif extension in ['.txt', '.md']:
+        elif extension in [".txt", ".md"]:
             text = self._extract_from_text(file_path)
         else:
             raise ValueError(f"Unsupported file type: {extension}")
@@ -40,7 +40,7 @@ class DocumentProcessor:
     def _extract_from_pdf(self, file_path: Path) -> str:
         """Extract text from PDF"""
         text = ""
-        with open(file_path, 'rb') as file:
+        with open(file_path, "rb") as file:
             pdf_reader = pypdf.PdfReader(file)
             for page in pdf_reader.pages:
                 text += page.extract_text() + "\n"
@@ -73,13 +73,13 @@ class DocumentProcessor:
 
     def _extract_from_text(self, file_path: Path) -> str:
         """Extract text from plain text files"""
-        with open(file_path, 'r', encoding='utf-8') as file:
+        with open(file_path, encoding="utf-8") as file:
             return file.read()
 
-    def _create_chunks(self, text: str) -> List[str]:
+    def _create_chunks(self, text: str) -> list[str]:
         """Split text into overlapping chunks"""
         # Clean text
-        text = re.sub(r'\s+', ' ', text).strip()
+        text = re.sub(r"\s+", " ", text).strip()
 
         chunks = []
         start = 0
@@ -93,9 +93,7 @@ class DocumentProcessor:
                 # Look for sentence ending
                 chunk_text = text[start:end]
                 last_period = max(
-                    chunk_text.rfind('. '),
-                    chunk_text.rfind('? '),
-                    chunk_text.rfind('! ')
+                    chunk_text.rfind(". "), chunk_text.rfind("? "), chunk_text.rfind("! ")
                 )
                 if last_period > self.chunk_size * 0.5:  # At least 50% of chunk size
                     end = start + last_period + 1

@@ -1,31 +1,28 @@
-from typing import List, Tuple
-import chromadb
-from chromadb.config import Settings
-import google.generativeai as genai
-from sentence_transformers import SentenceTransformer
+import os
 import uuid
 from datetime import datetime
-import os
+
+import chromadb
+import google.generativeai as genai
+from chromadb.config import Settings
+from sentence_transformers import SentenceTransformer
 from session_manager import SessionManager
+
 
 class RAGEngine:
     """RAG engine for document retrieval and response generation"""
 
     def __init__(self, collection_name: str = "documents"):
         # Initialize ChromaDB
-        self.client = chromadb.Client(Settings(
-            anonymized_telemetry=False,
-            allow_reset=True
-        ))
+        self.client = chromadb.Client(Settings(anonymized_telemetry=False, allow_reset=True))
 
         # Get or create collection
         self.collection = self.client.get_or_create_collection(
-            name=collection_name,
-            metadata={"hnsw:space": "cosine"}
+            name=collection_name, metadata={"hnsw:space": "cosine"}
         )
 
         # Initialize embedding model
-        self.embedder = SentenceTransformer('all-MiniLM-L6-v2')
+        self.embedder = SentenceTransformer("all-MiniLM-L6-v2")
 
         # Initialize Gemini
         self.model = genai.GenerativeModel(os.getenv("GEMINI_MODEL"))
@@ -33,7 +30,7 @@ class RAGEngine:
         # Session manager for persistence
         self.session_manager = SessionManager()
 
-    def add_documents(self, chunks: List[str], source_name: str) -> str:
+    def add_documents(self, chunks: list[str], source_name: str) -> str:
         """Add document chunks to vector store"""
         doc_id = str(uuid.uuid4())
 
@@ -47,41 +44,37 @@ class RAGEngine:
                 "source": source_name,
                 "doc_id": doc_id,
                 "chunk_index": i,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
             for i in range(len(chunks))
         ]
 
         # Add to collection
-        self.collection.add(
-            embeddings=embeddings,
-            documents=chunks,
-            metadatas=metadatas,
-            ids=ids
-        )
+        self.collection.add(embeddings=embeddings, documents=chunks, metadatas=metadatas, ids=ids)
 
         return doc_id
 
-    def retrieve_relevant_chunks(self, query: str, n_results: int = 5) -> Tuple[List[str], List[str]]:
+    def retrieve_relevant_chunks(
+        self, query: str, n_results: int = 5
+    ) -> tuple[list[str], list[str]]:
         """Retrieve relevant chunks for a query"""
         # Generate query embedding
         query_embedding = self.embedder.encode([query]).tolist()
 
         # Query collection
-        results = self.collection.query(
-            query_embeddings=query_embedding,
-            n_results=n_results
-        )
+        results = self.collection.query(query_embeddings=query_embedding, n_results=n_results)
 
-        if not results['documents'] or not results['documents'][0]:
+        if not results["documents"] or not results["documents"][0]:
             return [], []
 
-        documents = results['documents'][0]
-        sources = [meta.get('source', 'Unknown') for meta in results['metadatas'][0]]
+        documents = results["documents"][0]
+        sources = [meta.get("source", "Unknown") for meta in results["metadatas"][0]]
 
         return documents, sources
 
-    def generate_response(self, query: str, session_id: str, n_results: int = 5) -> Tuple[str, List[str]]:
+    def generate_response(
+        self, query: str, session_id: str, n_results: int = 5
+    ) -> tuple[str, list[str]]:
         """Generate response using RAG"""
         # Retrieve relevant chunks
         relevant_chunks, sources = self.retrieve_relevant_chunks(query, n_results)
@@ -131,15 +124,15 @@ Please provide a helpful response:"""
 
         return response.text, unique_sources
 
-    def _format_history(self, history: List[dict]) -> str:
+    def _format_history(self, history: list[dict]) -> str:
         """Format conversation history"""
         if not history:
             return "No previous conversation."
 
         formatted = []
         for msg in history[-6:]:  # Last 6 messages (3 exchanges)
-            role = msg['role'].capitalize()
-            content = msg['content']
+            role = msg["role"].capitalize()
+            content = msg["content"]
             formatted.append(f"{role}: {content}")
 
         return "\n".join(formatted)
@@ -148,27 +141,26 @@ Please provide a helpful response:"""
         """Clear all documents from collection and all sessions"""
         self.client.delete_collection(self.collection.name)
         self.collection = self.client.get_or_create_collection(
-            name=self.collection.name,
-            metadata={"hnsw:space": "cosine"}
+            name=self.collection.name, metadata={"hnsw:space": "cosine"}
         )
         self.session_manager.clear_all_sessions()
 
-    def list_documents(self) -> List[dict]:
+    def list_documents(self) -> list[dict]:
         """List all documents in the collection"""
         try:
             results = self.collection.get()
-            if not results['metadatas']:
+            if not results["metadatas"]:
                 return []
 
             # Get unique documents
             docs = {}
-            for metadata in results['metadatas']:
-                doc_id = metadata.get('doc_id')
+            for metadata in results["metadatas"]:
+                doc_id = metadata.get("doc_id")
                 if doc_id and doc_id not in docs:
                     docs[doc_id] = {
-                        'doc_id': doc_id,
-                        'source': metadata.get('source'),
-                        'timestamp': metadata.get('timestamp')
+                        "doc_id": doc_id,
+                        "source": metadata.get("source"),
+                        "timestamp": metadata.get("timestamp"),
                     }
 
             return list(docs.values())

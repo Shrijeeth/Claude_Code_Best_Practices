@@ -1,15 +1,14 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import List, Optional
 import os
 import shutil
-from pathlib import Path
-import google.generativeai as genai
-from dotenv import load_dotenv
 import uuid
+from pathlib import Path
 
+import google.generativeai as genai
 from document_processor import DocumentProcessor
+from dotenv import load_dotenv
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from rag_engine import RAGEngine
 
 load_dotenv()
@@ -42,14 +41,14 @@ document_processor = DocumentProcessor()
 
 class ChatMessage(BaseModel):
     message: str
-    session_id: Optional[str] = None
+    session_id: str | None = None
     use_rag: bool = True
 
 
 class ChatResponse(BaseModel):
     response: str
     session_id: str
-    sources: Optional[List[str]] = None
+    sources: list[str] | None = None
 
 
 @app.get("/")
@@ -79,10 +78,10 @@ async def upload_file(file: UploadFile = File(...)):
             "status": "success",
             "filename": file.filename,
             "chunks_processed": len(text_chunks),
-            "document_id": doc_id
+            "document_id": doc_id,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error processing file: {e!s}") from e
 
 
 @app.post("/chat", response_model=ChatResponse)
@@ -93,25 +92,15 @@ async def chat(chat_message: ChatMessage):
 
         if chat_message.use_rag:
             # Use RAG to get relevant context
-            response, sources = rag_engine.generate_response(
-                chat_message.message,
-                session_id
-            )
-            return ChatResponse(
-                response=response,
-                session_id=session_id,
-                sources=sources
-            )
+            response, sources = rag_engine.generate_response(chat_message.message, session_id)
+            return ChatResponse(response=response, session_id=session_id, sources=sources)
         else:
             # Direct chat without RAG
             model = genai.GenerativeModel(os.getenv("GEMINI_MODEL"))
             response = model.generate_content(chat_message.message)
-            return ChatResponse(
-                response=response.text,
-                session_id=session_id
-            )
+            return ChatResponse(response=response.text, session_id=session_id)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating response: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generating response: {e!s}") from e
 
 
 @app.delete("/documents")
@@ -121,7 +110,7 @@ async def clear_documents():
         rag_engine.clear_all()
         return {"status": "success", "message": "All documents cleared"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error clearing documents: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error clearing documents: {e!s}") from e
 
 
 @app.get("/documents")
@@ -131,7 +120,7 @@ async def list_documents():
         documents = rag_engine.list_documents()
         return {"documents": documents}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error listing documents: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error listing documents: {e!s}") from e
 
 
 @app.get("/sessions")
@@ -141,7 +130,7 @@ async def list_sessions():
         sessions = rag_engine.session_manager.list_sessions()
         return {"sessions": sessions, "total": len(sessions)}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error listing sessions: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error listing sessions: {e!s}") from e
 
 
 @app.get("/sessions/{session_id}")
@@ -155,7 +144,7 @@ async def get_session(session_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error retrieving session: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving session: {e!s}") from e
 
 
 @app.delete("/sessions/{session_id}")
@@ -169,7 +158,7 @@ async def delete_session(session_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error deleting session: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error deleting session: {e!s}") from e
 
 
 @app.delete("/sessions")
@@ -179,9 +168,10 @@ async def clear_all_sessions():
         rag_engine.session_manager.clear_all_sessions()
         return {"status": "success", "message": "All sessions cleared"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error clearing sessions: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error clearing sessions: {e!s}") from e
 
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

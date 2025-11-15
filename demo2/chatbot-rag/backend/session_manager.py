@@ -1,9 +1,7 @@
 import json
-import os
-from pathlib import Path
-from typing import List, Dict, Optional
-from datetime import datetime
 import logging
+from datetime import datetime
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -29,10 +27,12 @@ class SessionManager:
             for session_file in self.sessions_dir.glob("*.json"):
                 session_id = session_file.stem
                 try:
-                    with open(session_file, 'r', encoding='utf-8') as f:
+                    with open(session_file, encoding="utf-8") as f:
                         session_data = json.load(f)
-                        self.sessions[session_id] = session_data.get('messages', [])
-                        logger.info(f"Loaded session {session_id} with {len(self.sessions[session_id])} messages")
+                        self.sessions[session_id] = session_data.get("messages", [])
+                        logger.info(
+                            f"Loaded session {session_id} with {len(self.sessions[session_id])} messages"
+                        )
                 except Exception as e:
                     logger.error(f"Error loading session {session_id}: {e}")
 
@@ -40,7 +40,7 @@ class SessionManager:
         except Exception as e:
             logger.error(f"Error loading sessions: {e}")
 
-    def save_session(self, session_id: str, messages: List[Dict[str, str]]):
+    def save_session(self, session_id: str, messages: list[dict[str, str]]):
         """
         Save a session to disk
 
@@ -53,21 +53,21 @@ class SessionManager:
 
             # Check if session exists to get created_at timestamp
             if session_file.exists():
-                with open(session_file, 'r', encoding='utf-8') as f:
+                with open(session_file, encoding="utf-8") as f:
                     existing_data = json.load(f)
-                    created_at = existing_data.get('created_at')
+                    created_at = existing_data.get("created_at")
             else:
                 created_at = datetime.now().isoformat()
 
             session_data = {
-                'session_id': session_id,
-                'created_at': created_at,
-                'updated_at': datetime.now().isoformat(),
-                'messages': messages,
-                'message_count': len(messages)
+                "session_id": session_id,
+                "created_at": created_at,
+                "updated_at": datetime.now().isoformat(),
+                "messages": messages,
+                "message_count": len(messages),
             }
 
-            with open(session_file, 'w', encoding='utf-8') as f:
+            with open(session_file, "w", encoding="utf-8") as f:
                 json.dump(session_data, f, indent=2, ensure_ascii=False)
 
             # Update in-memory cache
@@ -77,7 +77,7 @@ class SessionManager:
             logger.error(f"Error saving session {session_id}: {e}")
             raise
 
-    def load_session(self, session_id: str) -> List[Dict[str, str]]:
+    def load_session(self, session_id: str) -> list[dict[str, str]]:
         """
         Load a session from memory or disk
 
@@ -95,9 +95,9 @@ class SessionManager:
         session_file = self.sessions_dir / f"{session_id}.json"
         if session_file.exists():
             try:
-                with open(session_file, 'r', encoding='utf-8') as f:
+                with open(session_file, encoding="utf-8") as f:
                     session_data = json.load(f)
-                    messages = session_data.get('messages', [])
+                    messages = session_data.get("messages", [])
                     self.sessions[session_id] = messages
                     return messages
             except Exception as e:
@@ -133,7 +133,7 @@ class SessionManager:
             logger.error(f"Error deleting session {session_id}: {e}")
             raise
 
-    def list_sessions(self) -> List[Dict]:
+    def list_sessions(self) -> list[dict]:
         """
         List all available sessions with metadata
 
@@ -145,30 +145,32 @@ class SessionManager:
         try:
             for session_file in self.sessions_dir.glob("*.json"):
                 try:
-                    with open(session_file, 'r', encoding='utf-8') as f:
+                    with open(session_file, encoding="utf-8") as f:
                         session_data = json.load(f)
 
                         # Get first user message as preview
                         preview = "No messages"
-                        for msg in session_data.get('messages', []):
-                            if msg.get('role') == 'user':
-                                preview = msg.get('content', '')[:100]
-                                if len(msg.get('content', '')) > 100:
+                        for msg in session_data.get("messages", []):
+                            if msg.get("role") == "user":
+                                preview = msg.get("content", "")[:100]
+                                if len(msg.get("content", "")) > 100:
                                     preview += "..."
                                 break
 
-                        sessions_list.append({
-                            'session_id': session_data.get('session_id'),
-                            'created_at': session_data.get('created_at'),
-                            'updated_at': session_data.get('updated_at'),
-                            'message_count': session_data.get('message_count', 0),
-                            'preview': preview
-                        })
+                        sessions_list.append(
+                            {
+                                "session_id": session_data.get("session_id"),
+                                "created_at": session_data.get("created_at"),
+                                "updated_at": session_data.get("updated_at"),
+                                "message_count": session_data.get("message_count", 0),
+                                "preview": preview,
+                            }
+                        )
                 except Exception as e:
                     logger.error(f"Error reading session file {session_file}: {e}")
 
             # Sort by updated_at (most recent first)
-            sessions_list.sort(key=lambda x: x.get('updated_at', ''), reverse=True)
+            sessions_list.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
 
         except Exception as e:
             logger.error(f"Error listing sessions: {e}")
@@ -194,7 +196,7 @@ class SessionManager:
         """Get total number of stored sessions"""
         return len(list(self.sessions_dir.glob("*.json")))
 
-    def export_session(self, session_id: str) -> Optional[Dict]:
+    def export_session(self, session_id: str) -> dict | None:
         """
         Export a session's full data
 
@@ -207,7 +209,7 @@ class SessionManager:
         session_file = self.sessions_dir / f"{session_id}.json"
         if session_file.exists():
             try:
-                with open(session_file, 'r', encoding='utf-8') as f:
+                with open(session_file, encoding="utf-8") as f:
                     return json.load(f)
             except Exception as e:
                 logger.error(f"Error exporting session {session_id}: {e}")

@@ -1,8 +1,8 @@
+import os
+from pathlib import Path
+
 import gradio as gr
 import requests
-from pathlib import Path
-import os
-from typing import List, Tuple
 
 # Backend API URL
 API_URL = os.getenv("API_URL", "http://localhost:8000")
@@ -17,8 +17,9 @@ def upload_file(file):
         return "Please select a file to upload."
 
     try:
-        files = {"file": open(file.name, "rb")}
-        response = requests.post(f"{API_URL}/upload", files=files)
+        with open(file.name, "rb") as f:
+            files = {"file": f}
+            response = requests.post(f"{API_URL}/upload", files=files)
 
         if response.status_code == 200:
             result = response.json()
@@ -26,10 +27,10 @@ def upload_file(file):
         else:
             return f"❌ Error: {response.json().get('detail', 'Upload failed')}"
     except Exception as e:
-        return f"❌ Error uploading file: {str(e)}"
+        return f"❌ Error uploading file: {e!s}"
 
 
-def chat(message: str, history: List[Tuple[str, str]], use_rag: bool):
+def chat(message: str, history: list[tuple[str, str]], use_rag: bool):
     """Send message to chatbot"""
     global session_id
 
@@ -38,14 +39,10 @@ def chat(message: str, history: List[Tuple[str, str]], use_rag: bool):
 
     try:
         # Add user message to history
-        history = history + [(message, None)]
+        history = [*history, (message, None)]
 
         # Prepare request
-        payload = {
-            "message": message,
-            "session_id": session_id,
-            "use_rag": use_rag
-        }
+        payload = {"message": message, "session_id": session_id, "use_rag": use_rag}
 
         # Send to backend
         response = requests.post(f"{API_URL}/chat", json=payload)
@@ -71,7 +68,7 @@ def chat(message: str, history: List[Tuple[str, str]], use_rag: bool):
             return history, ""
 
     except Exception as e:
-        error_msg = f"Error: {str(e)}"
+        error_msg = f"Error: {e!s}"
         history[-1] = (message, error_msg)
         return history, ""
 
@@ -85,7 +82,7 @@ def clear_documents():
         else:
             return f"❌ Error: {response.json().get('detail', 'Clear failed')}"
     except Exception as e:
-        return f"❌ Error: {str(e)}"
+        return f"❌ Error: {e!s}"
 
 
 def list_documents():
@@ -104,7 +101,7 @@ def list_documents():
         else:
             return f"❌ Error: {response.json().get('detail', 'Request failed')}"
     except Exception as e:
-        return f"❌ Error: {str(e)}"
+        return f"❌ Error: {e!s}"
 
 
 def list_sessions():
@@ -119,17 +116,24 @@ def list_sessions():
             session_list = "💬 **Saved Sessions:**\n\n"
             choices = []
             for i, session in enumerate(sessions, 1):
-                preview = session.get('preview', 'No messages')
-                msg_count = session.get('message_count', 0)
+                preview = session.get("preview", "No messages")
+                msg_count = session.get("message_count", 0)
                 session_list += f"{i}. [{msg_count} msgs] {preview}\n"
                 # Create dropdown choices with session_id as value
-                choices.append((preview[:50] + "..." if len(preview) > 50 else preview, session.get('session_id')))
+                choices.append(
+                    (
+                        preview[:50] + "..." if len(preview) > 50 else preview,
+                        session.get("session_id"),
+                    )
+                )
 
             return session_list, gr.update(choices=choices)
         else:
-            return f"❌ Error: {response.json().get('detail', 'Request failed')}", gr.update(choices=[])
+            return f"❌ Error: {response.json().get('detail', 'Request failed')}", gr.update(
+                choices=[]
+            )
     except Exception as e:
-        return f"❌ Error: {str(e)}", gr.update(choices=[])
+        return f"❌ Error: {e!s}", gr.update(choices=[])
 
 
 def load_session(selected_session_id):
@@ -143,7 +147,7 @@ def load_session(selected_session_id):
         response = requests.get(f"{API_URL}/sessions/{selected_session_id}")
         if response.status_code == 200:
             session_data = response.json()
-            messages = session_data.get('messages', [])
+            messages = session_data.get("messages", [])
 
             # Update global session_id
             session_id = selected_session_id
@@ -152,15 +156,15 @@ def load_session(selected_session_id):
             history = []
             for i in range(0, len(messages), 2):
                 if i + 1 < len(messages):
-                    user_msg = messages[i].get('content', '')
-                    bot_msg = messages[i + 1].get('content', '')
+                    user_msg = messages[i].get("content", "")
+                    bot_msg = messages[i + 1].get("content", "")
                     history.append((user_msg, bot_msg))
 
             return f"✅ Loaded session with {len(messages)} messages", history
         else:
             return f"❌ Error: {response.json().get('detail', 'Session not found')}", []
     except Exception as e:
-        return f"❌ Error: {str(e)}", []
+        return f"❌ Error: {e!s}", []
 
 
 def delete_session(selected_session_id):
@@ -174,9 +178,11 @@ def delete_session(selected_session_id):
             # Refresh session list
             return list_sessions()
         else:
-            return f"❌ Error: {response.json().get('detail', 'Delete failed')}", gr.update(choices=[])
+            return f"❌ Error: {response.json().get('detail', 'Delete failed')}", gr.update(
+                choices=[]
+            )
     except Exception as e:
-        return f"❌ Error: {str(e)}", gr.update(choices=[])
+        return f"❌ Error: {e!s}", gr.update(choices=[])
 
 
 def new_session():
@@ -203,7 +209,7 @@ with gr.Blocks(
     ),
     css=open("static/css/custom.css").read() if Path("static/css/custom.css").exists() else "",
     head=custom_head,
-    title="AI Chatbot with RAG"
+    title="AI Chatbot with RAG",
 ) as demo:
     # Header
     gr.HTML("""
@@ -230,7 +236,7 @@ with gr.Blocks(
                     placeholder="Type your message here...",
                     show_label=False,
                     scale=4,
-                    container=False
+                    container=False,
                 )
                 send_btn = gr.Button("Send 🚀", scale=1, variant="primary")
 
@@ -244,14 +250,10 @@ with gr.Blocks(
             file_upload = gr.File(
                 label="Upload File",
                 file_types=[".pdf", ".docx", ".txt", ".md", ".xlsx", ".pptx"],
-                type="filepath"
+                type="filepath",
             )
             upload_btn = gr.Button("Upload & Process", variant="primary")
-            upload_status = gr.Textbox(
-                label="Upload Status",
-                interactive=False,
-                show_label=False
-            )
+            upload_status = gr.Textbox(label="Upload Status", interactive=False, show_label=False)
 
             gr.Markdown("---")
 
@@ -260,88 +262,47 @@ with gr.Blocks(
             list_docs_btn = gr.Button("List Documents 📋")
             clear_docs_btn = gr.Button("Clear All Documents 🗑️", variant="stop")
             docs_status = gr.Textbox(
-                label="Documents",
-                interactive=False,
-                show_label=False,
-                lines=5
+                label="Documents", interactive=False, show_label=False, lines=5
             )
 
             gr.Markdown("---")
 
             # Session Management
             gr.Markdown("### 💾 Session Management")
-            new_session_btn = gr.Button("New Session ➕", variant="primary")
+            new_session_btn = gr.Button("New Session ➕", variant="primary")  # noqa: RUF001
             list_sessions_btn = gr.Button("List Sessions 📋")
-            session_dropdown = gr.Dropdown(
-                label="Select Session",
-                choices=[],
-                interactive=True
-            )
+            session_dropdown = gr.Dropdown(label="Select Session", choices=[], interactive=True)
             with gr.Row():
                 load_session_btn = gr.Button("Load 📂", scale=1)
                 delete_session_btn = gr.Button("Delete 🗑️", scale=1, variant="stop")
             session_status = gr.Textbox(
-                label="Session Status",
-                interactive=False,
-                show_label=False,
-                lines=5
+                label="Session Status", interactive=False, show_label=False, lines=5
             )
 
     # Event handlers
-    send_btn.click(
-        chat,
-        inputs=[msg, chatbot, use_rag],
-        outputs=[chatbot, msg]
-    )
+    send_btn.click(chat, inputs=[msg, chatbot, use_rag], outputs=[chatbot, msg])
 
-    msg.submit(
-        chat,
-        inputs=[msg, chatbot, use_rag],
-        outputs=[chatbot, msg]
-    )
+    msg.submit(chat, inputs=[msg, chatbot, use_rag], outputs=[chatbot, msg])
 
-    upload_btn.click(
-        upload_file,
-        inputs=[file_upload],
-        outputs=[upload_status]
-    )
+    upload_btn.click(upload_file, inputs=[file_upload], outputs=[upload_status])
 
-    clear_btn.click(
-        lambda: ([], None),
-        outputs=[chatbot, msg]
-    )
+    clear_btn.click(lambda: ([], None), outputs=[chatbot, msg])
 
-    list_docs_btn.click(
-        list_documents,
-        outputs=[docs_status]
-    )
+    list_docs_btn.click(list_documents, outputs=[docs_status])
 
-    clear_docs_btn.click(
-        clear_documents,
-        outputs=[docs_status]
-    )
+    clear_docs_btn.click(clear_documents, outputs=[docs_status])
 
     # Session management event handlers
-    new_session_btn.click(
-        new_session,
-        outputs=[session_status, chatbot]
-    )
+    new_session_btn.click(new_session, outputs=[session_status, chatbot])
 
-    list_sessions_btn.click(
-        list_sessions,
-        outputs=[session_status, session_dropdown]
-    )
+    list_sessions_btn.click(list_sessions, outputs=[session_status, session_dropdown])
 
     load_session_btn.click(
-        load_session,
-        inputs=[session_dropdown],
-        outputs=[session_status, chatbot]
+        load_session, inputs=[session_dropdown], outputs=[session_status, chatbot]
     )
 
     delete_session_btn.click(
-        delete_session,
-        inputs=[session_dropdown],
-        outputs=[session_status, session_dropdown]
+        delete_session, inputs=[session_dropdown], outputs=[session_status, session_dropdown]
     )
 
     # Footer
@@ -353,9 +314,4 @@ with gr.Blocks(
 
 
 if __name__ == "__main__":
-    demo.launch(
-        server_name="0.0.0.0",
-        server_port=7860,
-        share=False,
-        show_error=True
-    )
+    demo.launch(server_name="0.0.0.0", server_port=7860, share=False, show_error=True)
