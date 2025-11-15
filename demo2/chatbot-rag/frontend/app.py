@@ -1,6 +1,5 @@
 import gradio as gr
 import requests
-import json
 from pathlib import Path
 import os
 from typing import List, Tuple
@@ -113,44 +112,9 @@ custom_head = """
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://d3js.org/d3.v7.min.js"></script>
 """
 
-custom_js = """
-<script src="file=static/js/threejs-background.js"></script>
-<script src="file=static/js/d3-visualization.js"></script>
-<script>
-// Track messages for analytics
-function trackMessage(isUser, useRag) {
-    if (typeof analytics !== 'undefined') {
-        analytics.addMessage(isUser, useRag);
-    }
-}
-
-// Track file uploads
-function trackFileUpload() {
-    if (typeof analytics !== 'undefined') {
-        analytics.addFileUpload();
-    }
-}
-
-// Intercept form submissions to track messages
-document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(() => {
-        const chatForm = document.querySelector('form');
-        if (chatForm) {
-            chatForm.addEventListener('submit', () => {
-                const ragCheckbox = document.querySelector('input[type="checkbox"]');
-                const useRag = ragCheckbox ? ragCheckbox.checked : true;
-                trackMessage(true, useRag);
-                setTimeout(() => trackMessage(false, useRag), 1000);
-            });
-        }
-    }, 2000);
-});
-</script>
-"""
+custom_js = ""
 
 # Build the Gradio interface
 with gr.Blocks(
@@ -223,24 +187,6 @@ with gr.Blocks(
                 lines=5
             )
 
-    # Analytics Section
-    gr.HTML("""
-        <div style="margin-top: 2rem;">
-            <h3 style="color: #f1f5f9; margin-bottom: 1rem;">📊 Analytics</h3>
-            <div id="stats-container"></div>
-            <div id="d3-visualization"></div>
-        </div>
-        <script>
-            // Create stats cards
-            if (typeof ChatAnalytics !== 'undefined') {
-                const container = document.getElementById('stats-container');
-                if (container && analytics) {
-                    analytics.createStatsCards(container);
-                }
-            }
-        </script>
-    """)
-
     # Event handlers
     send_btn.click(
         chat,
@@ -275,13 +221,10 @@ with gr.Blocks(
         outputs=[docs_status]
     )
 
-    # Add custom JavaScript
-    gr.HTML(custom_js)
-
     # Footer
     gr.HTML("""
         <div style="text-align: center; margin-top: 2rem; padding: 1rem; color: #94a3b8; font-size: 0.9rem;">
-            <p>Powered by Gemini AI • Built with Gradio, FastAPI, Three.js & D3.js</p>
+            <p>Powered by Gemini AI • Built with Gradio & FastAPI</p>
         </div>
     """)
 
