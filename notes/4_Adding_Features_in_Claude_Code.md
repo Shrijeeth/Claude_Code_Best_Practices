@@ -61,8 +61,8 @@ graph LR
 Shift + Tab (twice)
 
 # Reference relevant files and request feature
-@frontend/ChatInterface.jsx @backend/api.py
-Build an interface with source citations that renders clickable links
+@frontend/app.py @backend/rag_engine.py
+Add source citations to chat responses that show which documents were used
 ```
 
 ### Step 2: Review the Plan
@@ -106,7 +106,7 @@ sequenceDiagram
 
 ### The Problem
 
-After implementing source citations, the links were functional but hard to read due to default blue color on the interface.
+After implementing source citations in the RAG chatbot, the document source links were functional but hard to read due to styling issues in the Gradio interface.
 
 ### Solution: Screenshot-Based Feedback
 
@@ -124,7 +124,7 @@ After implementing source citations, the links were functional but hard to read 
 
 User: "These links are hard to read. Can you make this more visually appealing?"
 
-Claude: "I can see the issue. The links are using a default blue color. 
+Claude: "I can see the issue. The links are using a default blue color.
 Let me go ahead and make a change."
 ```
 
@@ -157,10 +157,10 @@ When building a new feature, consider clearing conversation history:
 
 ### Feature Requirements
 
-Add a "New Chat" button that:
+Add a "New Session" button that:
 
 - Clears the conversation in the chat window
-- Starts a new session
+- Starts a new session with a fresh session_id
 - Handles necessary cleanup
 - Doesn't require page refresh
 
@@ -175,10 +175,10 @@ Shift + Tab (twice)
 #### 2. Submit Request
 
 ```bash
-Add a new chat button. When clicked, it should:
+Add a new session button. When clicked, it should:
 - Clear the conversation in the chat window
-- Start a new session
-- Handle necessary cleanup
+- Reset the session_id to None
+- Clear the chatbot history in the UI
 ```
 
 **Tip**: Use `\` + `Enter` to add new lines for better visual organization of your prompt.
@@ -187,9 +187,9 @@ Add a new chat button. When clicked, it should:
 
 Claude will identify:
 
-- Frontend changes needed
-- Backend modifications required
-- State management updates
+- Frontend changes in `app.py` (Gradio UI)
+- Backend session handling in `rag_engine.py`
+- State management for `session_id` variable
 
 #### 4. Execute Plan
 
@@ -201,7 +201,7 @@ Monitor the to-do list and file updates. With auto-accept enabled, changes proce
 
 ### The Issue
 
-Claude Code may attempt to run the server using `./run.sh` when you already have it running.
+Claude Code may attempt to run the server using `./start.sh` when you already have it running.
 
 ### Solutions
 
@@ -220,7 +220,8 @@ Add to project memory file:
 
 ## Development Preferences
 
-Don't run the server using ./run.sh - I will start it myself.
+Don't run the server using ./start.sh - I will start it myself.
+The application uses a two-server architecture (FastAPI backend on 8000, Gradio frontend on 7860).
 ```
 
 ### Choosing the Right Memory File
@@ -303,10 +304,10 @@ Instead of manually taking screenshots, Claude Code can:
 ### Example Usage
 
 ```bash
-User: "Using the Playwright MCP server, visit http://localhost:3000 
-and view the new chat button. I want that button to look the same 
-as the other links below for Courses and Try Asking. Make sure 
-this is left aligned and that the border is removed."
+User: "Using the Playwright MCP server, visit http://localhost:7860
+and view the new session button. I want that button to look the same
+as the other buttons in the Session Management section. Make sure
+the styling is consistent with the Upload & Process button."
 ```
 
 #### What Happens
@@ -318,7 +319,7 @@ sequenceDiagram
     participant Playwright
     participant Browser
     participant Code
-    
+
     User->>Claude: Request changes with Playwright
     Claude->>Playwright: Navigate to page
     Playwright->>Browser: Open page
@@ -351,95 +352,109 @@ Options:
 
 ---
 
-## Backend Tool Implementation
+## Backend Feature Implementation
 
 ### The Goal
 
-Add a new tool that allows users to:
+Add a new feature that allows users to:
 
-- Visit a particular course
-- See lesson number, title, and description for each lesson
-- Get more detailed information than currently available
+- View conversation history across sessions
+- Load previous chat sessions
+- Delete old sessions
+- Persist session data to disk
 
 ### Current State
 
-The existing `search_tools.py` contains:
+The existing `rag_engine.py` contains:
 
-- One tool for searching content
-- Basic course details retrieval
+- In-memory session storage
+- Basic session history management
+- Session-based conversation context
 
 ### New Requirement
 
-Implement a second tool for getting descriptive information about individual lessons within courses.
+Implement persistent session storage using the `SessionManager` class to save and load conversations from disk.
 
 ### Implementation Process
 
 #### 1. Review Current Architecture
 
 ```python
-# Current search_tools.py structure
-def search_course_content(query):
-    """Get high-level course details"""
-    # Returns: course title, overview, basic info
-    pass
+# Current rag_engine.py structure
+class RAGEngine:
+    def __init__(self):
+        self.session_history = {}  # In-memory storage
+
+    def generate_response(self, query, session_id):
+        """Generate response with session context"""
+        # Returns: response text, sources
+        pass
 ```
 
 #### 2. Create Plan
 
 ```bash
 # In plan mode
-@backend/search_tools.py
+@backend/rag_engine.py @backend/session_manager.py
 
-I need to add another tool that allows me to visit a particular 
-course and for each of those courses, see the lesson number and 
-the lesson title and description about that as well.
+I need to add persistent session storage so users can save their
+conversations, list all saved sessions, load previous sessions,
+and delete old sessions.
 ```
 
 #### 3. Expected Changes
 
 Claude will plan to:
 
-- Create new tool function in `search_tools.py`
-- Update system prompt to reference new tool
-- Register tool in RAG system
-- Handle lesson-level data retrieval
+- Create `SessionManager` class in `session_manager.py`
+- Add file-based persistence for sessions
+- Update `rag_engine.py` to use SessionManager
+- Add API endpoints in `main.py` for session CRUD operations
+- Update frontend `app.py` with session management UI
 
 ### File Modifications
 
 ```python
-# New tool in search_tools.py
-def get_course_lessons(course_id):
+# New SessionManager in session_manager.py
+class SessionManager:
     """
-    Get detailed lesson information for a specific course
-    
-    Args:
-        course_id: The ID of the course
-        
-    Returns:
-        List of lessons with:
-        - lesson_number
-        - lesson_title
-        - lesson_description
-        - lesson_link
+    Manage persistent session storage
+
+    Methods:
+        save_session(session_id, messages): Save session to disk
+        load_session(session_id): Load session from disk
+        list_sessions(): List all saved sessions
+        delete_session(session_id): Delete a session
+        clear_all_sessions(): Clear all sessions
     """
     pass
 ```
 
-### System Prompt Update
+### API Endpoints Update
 
-The system prompt will be modified to include instructions about when and how to use the new lesson detail tool.
+New endpoints will be added to `backend/main.py`:
+
+- `GET /sessions` - List all sessions
+- `GET /sessions/{session_id}` - Get specific session
+- `DELETE /sessions/{session_id}` - Delete a session
 
 ### Testing
 
 After implementation:
 
 ```bash
-User: "Tell me about the lessons in the Python course"
+User: "List my saved sessions"
 
 Expected Response:
-- Lesson 1: Introduction to Python - Learn basic syntax...
-- Lesson 2: Variables and Data Types - Understanding...
-- [Additional lessons with details and links]
+💬 Saved Sessions:
+1. [5 msgs] What is machine learning?
+2. [8 msgs] Explain neural networks...
+3. [3 msgs] How does RAG work?
+
+# Then load a session
+User: "Load session 1"
+✅ Loaded session with 5 messages
+[Chat history restored in UI]
 ```
 
 ---
