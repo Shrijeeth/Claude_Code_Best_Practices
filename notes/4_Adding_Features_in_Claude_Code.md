@@ -491,11 +491,3 @@ flowchart TD
 | New Line in Prompt | `\ + Enter` |
 | View MCP Status | `/mcp` |
 | Cancel Operation | `Escape` |
-
----
-
-## Additional Resources
-
-- **Claude Code Documentation**: Official guides and API references
-- **MCP Server Repository**: Find and install additional MCP servers
-- **Playwright Documentation**: Learn more about browser automation capabilities
